@@ -1,191 +1,177 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const grid = document.querySelector('.grid')
-    const flagsLeft = document.querySelector('#flags-left')
-    const result = document.querySelector('#result')
-    let width = 10
-    let bombAmount = 20
-    let flags = 0
-    let squares = []
-    let isGameOver = false
-  
-    //create Board
-    function createBoard() {
-      flagsLeft.innerHTML = bombAmount
-  
-      //get shuffled game array with random bombs
-      const bombsArray = Array(bombAmount).fill('bomb')
-      const emptyArray = Array(width*width - bombAmount).fill('valid')
-      const gameArray = emptyArray.concat(bombsArray)
-      const shuffledArray = gameArray.sort(() => Math.random() -0.5)
-  
-      for(let i = 0; i < width*width; i++) {
-        const square = document.createElement('div')
-        square.setAttribute('id', i)
-        square.classList.add(shuffledArray[i])
-        grid.appendChild(square)
-        squares.push(square)
-  
-        //normal click
-        square.addEventListener('click', function(e) {
-          click(square)
-        })
-  
-        //cntrl and left click
-        square.oncontextmenu = function(e) {
-          e.preventDefault()
-          addFlag(square)
+var board = [];
+var rows = 8;
+var columns = 8;
+
+var minesCount = 10;
+var minesLocation = []; // "2-2", "3-4", "2-1"
+
+var tilesClicked = 0; //goal to click all tiles except the ones containing mines
+var flagEnabled = false;
+
+var gameOver = false;
+
+window.onload = function() {
+    startGame();
+}
+
+function setMines() {
+    // minesLocation.push("2-2");
+    // minesLocation.push("2-3");
+    // minesLocation.push("5-6");
+    // minesLocation.push("3-4");
+    // minesLocation.push("1-1");
+
+    let minesLeft = minesCount;
+    while (minesLeft > 0) { 
+        let r = Math.floor(Math.random() * rows);
+        let c = Math.floor(Math.random() * columns);
+        let id = r.toString() + "-" + c.toString();
+
+        if (!minesLocation.includes(id)) {
+            minesLocation.push(id);
+            minesLeft -= 1;
         }
-      }
-  
-      //add numbers
-      for (let i = 0; i < squares.length; i++) {
-        let total = 0
-        const isLeftEdge = (i % width === 0)
-        const isRightEdge = (i % width === width -1)
-  
-        if (squares[i].classList.contains('valid')) {
-          if (i > 0 && !isLeftEdge && squares[i -1].classList.contains('bomb')) total ++
-          if (i > 9 && !isRightEdge && squares[i +1 -width].classList.contains('bomb')) total ++
-          if (i > 10 && squares[i -width].classList.contains('bomb')) total ++
-          if (i > 11 && !isLeftEdge && squares[i -1 -width].classList.contains('bomb')) total ++
-          if (i < 98 && !isRightEdge && squares[i +1].classList.contains('bomb')) total ++
-          if (i < 90 && !isLeftEdge && squares[i -1 +width].classList.contains('bomb')) total ++
-          if (i < 88 && !isRightEdge && squares[i +1 +width].classList.contains('bomb')) total ++
-          if (i < 89 && squares[i +width].classList.contains('bomb')) total ++
-          squares[i].setAttribute('data', total)
-        }
-      }
     }
-    createBoard()
-  
-    //add Flag with right click
-    function addFlag(square) {
-      if (isGameOver) return
-      if (!square.classList.contains('checked') && (flags < bombAmount)) {
-        if (!square.classList.contains('flag')) {
-          square.classList.add('flag')
-          square.innerHTML = ' 🚩'
-          flags ++
-          flagsLeft.innerHTML = bombAmount- flags
-          checkForWin()
-        } else {
-          square.classList.remove('flag')
-          square.innerHTML = ''
-          flags --
-          flagsLeft.innerHTML = bombAmount- flags
+}
+
+
+function startGame() {
+    document.getElementById("mines-count").innerText = minesCount;
+    document.getElementById("flag-button").addEventListener("click", setFlag);
+    setMines();
+
+    //populate our board
+    for (let r = 0; r < rows; r++) {
+        let row = [];
+        for (let c = 0; c < columns; c++) {
+            //<div id="0-0"></div>
+            let tile = document.createElement("div");
+            tile.id = r.toString() + "-" + c.toString();
+            tile.addEventListener("click", clickTile);
+            document.getElementById("board").append(tile);
+            row.push(tile);
         }
-      }
+        board.push(row);
     }
-  
-    //click on square actions
-    function click(square) {
-      let currentId = square.id
-      if (isGameOver) return
-      if (square.classList.contains('checked') || square.classList.contains('flag')) return
-      if (square.classList.contains('bomb')) {
-        gameOver(square)
-      } else {
-        let total = square.getAttribute('data')
-        if (total !=0) {
-          square.classList.add('checked')
-          if (total == 1) square.classList.add('one')
-          if (total == 2) square.classList.add('two')
-          if (total == 3) square.classList.add('three')
-          if (total == 4) square.classList.add('four')
-          square.innerHTML = total
-          return
-        }
-        checkSquare(square, currentId)
-      }
-      square.classList.add('checked')
+
+    console.log(board);
+}
+
+function setFlag() {
+    if (flagEnabled) {
+        flagEnabled = false;
+        document.getElementById("flag-button").style.backgroundColor = "lightgray";
     }
-  
-  
-    //check neighboring squares once square is clicked
-    function checkSquare(square, currentId) {
-      const isLeftEdge = (currentId % width === 0)
-      const isRightEdge = (currentId % width === width -1)
-  
-      setTimeout(() => {
-        if (currentId > 0 && !isLeftEdge) {
-          const newId = squares[parseInt(currentId) -1].id
-          //const newId = parseInt(currentId) - 1   ....refactor
-          const newSquare = document.getElementById(newId)
-          click(newSquare)
-        }
-        if (currentId > 9 && !isRightEdge) {
-          const newId = squares[parseInt(currentId) +1 -width].id
-          //const newId = parseInt(currentId) +1 -width   ....refactor
-          const newSquare = document.getElementById(newId)
-          click(newSquare)
-        }
-        if (currentId > 10) {
-          const newId = squares[parseInt(currentId -width)].id
-          //const newId = parseInt(currentId) -width   ....refactor
-          const newSquare = document.getElementById(newId)
-          click(newSquare)
-        }
-        if (currentId > 11 && !isLeftEdge) {
-          const newId = squares[parseInt(currentId) -1 -width].id
-          //const newId = parseInt(currentId) -1 -width   ....refactor
-          const newSquare = document.getElementById(newId)
-          click(newSquare)
-        }
-        if (currentId < 98 && !isRightEdge) {
-          const newId = squares[parseInt(currentId) +1].id
-          //const newId = parseInt(currentId) +1   ....refactor
-          const newSquare = document.getElementById(newId)
-          click(newSquare)
-        }
-        if (currentId < 90 && !isLeftEdge) {
-          const newId = squares[parseInt(currentId) -1 +width].id
-          //const newId = parseInt(currentId) -1 +width   ....refactor
-          const newSquare = document.getElementById(newId)
-          click(newSquare)
-        }
-        if (currentId < 88 && !isRightEdge) {
-          const newId = squares[parseInt(currentId) +1 +width].id
-          //const newId = parseInt(currentId) +1 +width   ....refactor
-          const newSquare = document.getElementById(newId)
-          click(newSquare)
-        }
-        if (currentId < 89) {
-          const newId = squares[parseInt(currentId) +width].id
-          //const newId = parseInt(currentId) +width   ....refactor
-          const newSquare = document.getElementById(newId)
-          click(newSquare)
-        }
-      }, 10)
+    else {
+        flagEnabled = true;
+        document.getElementById("flag-button").style.backgroundColor = "darkgray";
     }
-  
-    //game over
-    function gameOver(square) {
-      result.innerHTML = 'BOOM! Game Over!'
-      isGameOver = true
-  
-      //show ALL the bombs
-      squares.forEach(square => {
-        if (square.classList.contains('bomb')) {
-          square.innerHTML = '💣'
-          square.classList.remove('bomb')
-          square.classList.add('checked')
-        }
-      })
+}
+
+function clickTile() {
+    if (gameOver || this.classList.contains("tile-clicked")) {
+        return;
     }
-  
-    //check for win
-    function checkForWin() {
-      ///simplified win argument
-    let matches = 0
-  
-      for (let i = 0; i < squares.length; i++) {
-        if (squares[i].classList.contains('flag') && squares[i].classList.contains('bomb')) {
-          matches ++
+
+    let tile = this;
+    if (flagEnabled) {
+        if (tile.innerText == "") {
+            tile.innerText = "🚩";
         }
-        if (matches === bombAmount) {
-          result.innerHTML = 'YOU WIN!'
-          isGameOver = true
+        else if (tile.innerText == "🚩") {
+            tile.innerText = "";
         }
-      }
+        return;
     }
-  })
+
+    if (minesLocation.includes(tile.id)) {
+        // alert("GAME OVER");
+        gameOver = true;
+        revealMines();
+        return;
+    }
+
+
+    let coords = tile.id.split("-"); // "0-0" -> ["0", "0"]
+    let r = parseInt(coords[0]);
+    let c = parseInt(coords[1]);
+    checkMine(r, c);
+
+}
+
+function revealMines() {
+    for (let r= 0; r < rows; r++) {
+        for (let c = 0; c < columns; c++) {
+            let tile = board[r][c];
+            if (minesLocation.includes(tile.id)) {
+                tile.innerText = "💣";
+                tile.style.backgroundColor = "red";                
+            }
+        }
+    }
+}
+
+function checkMine(r, c) {
+    if (r < 0 || r >= rows || c < 0 || c >= columns) {
+        return;
+    }
+    if (board[r][c].classList.contains("tile-clicked")) {
+        return;
+    }
+
+    board[r][c].classList.add("tile-clicked");
+    tilesClicked += 1;
+
+    let minesFound = 0;
+
+    //top 3
+    minesFound += checkTile(r-1, c-1);      //top left
+    minesFound += checkTile(r-1, c);        //top 
+    minesFound += checkTile(r-1, c+1);      //top right
+
+    //left and right
+    minesFound += checkTile(r, c-1);        //left
+    minesFound += checkTile(r, c+1);        //right
+
+    //bottom 3
+    minesFound += checkTile(r+1, c-1);      //bottom left
+    minesFound += checkTile(r+1, c);        //bottom 
+    minesFound += checkTile(r+1, c+1);      //bottom right
+
+    if (minesFound > 0) {
+        board[r][c].innerText = minesFound;
+        board[r][c].classList.add("x" + minesFound.toString());
+    }
+    else {
+        //top 3
+        checkMine(r-1, c-1);    //top left
+        checkMine(r-1, c);      //top
+        checkMine(r-1, c+1);    //top right
+
+        //left and right
+        checkMine(r, c-1);      //left
+        checkMine(r, c+1);      //right
+
+        //bottom 3
+        checkMine(r+1, c-1);    //bottom left
+        checkMine(r+1, c);      //bottom
+        checkMine(r+1, c+1);    //bottom right
+    }
+
+    if (tilesClicked == rows * columns - minesCount) {
+        document.getElementById("mines-count").innerText = "Cleared";
+        gameOver = true;
+    }
+
+}
+
+
+function checkTile(r, c) {
+    if (r < 0 || r >= rows || c < 0 || c >= columns) {
+        return 0;
+    }
+    if (minesLocation.includes(r.toString() + "-" + c.toString())) {
+        return 1;
+    }
+    return 0;
+}
